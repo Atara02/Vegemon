@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
-[System.Serializable]
-public class BattleUnit
+public class BattleUnit : MonoBehaviour
 {
+    public Animator m_anim = null;
+
     public string m_name;
 
     public int m_maxHp;
@@ -19,11 +19,64 @@ public class BattleUnit
     public List<BuffBase> m_buffs = new();
 
     public bool IsDead => m_curHp <= 0;
+    public bool IsAttack { get; set; }
+    public bool IsBlocking { get; set; }
+
+    public event Action OnUnitAttack;
+    public event Action OnUnitQuitAttack;
 
     public void Init()
     {
         m_curHp = m_maxHp;
     }
+
+    // =========================
+    // 애니메이션 제어
+    // =========================
+    bool CanControlAnimtion
+    {
+        get
+        {
+            if (m_anim == null)
+            {
+                m_anim = GetComponent<Animator>();
+            }
+            return m_anim != null;
+        }
+    }
+    public void PlayAttackAnimation()
+    {
+        if(CanControlAnimtion)
+        {
+            m_anim.SetTrigger("Attack");
+        }
+    }
+    public void PlayBlockingAnimation()
+    {
+        if (CanControlAnimtion)
+        {
+            m_anim.SetTrigger("Block");
+        }
+    }
+    public void PlayDeadAnimation()
+    {
+        if (CanControlAnimtion)
+        {
+            m_anim.SetTrigger("Dead");
+        }
+    }
+
+    void AttackEvent()
+    {
+        OnUnitAttack?.Invoke();
+        OnUnitAttack = null;
+    }
+    void QuitAttackEvent()
+    {
+        OnUnitQuitAttack?.Invoke();
+        OnUnitQuitAttack = null;
+    }
+
 
     // =========================
     // 버프 추가
@@ -39,7 +92,6 @@ public class BattleUnit
     // =========================
     // 공격
     // =========================
-
     public int FinalDamage()
     {
         int damage = m_attack;
@@ -70,25 +122,27 @@ public class BattleUnit
         }
         return defense;
     }
+    bool Blocking()
+    {
+        PlayBlockingAnimation();
+        return false;
+    }
     public void TakeDamage(DamageData damage)
     {
-        m_curHp -= damage.m_damage;
-        Debug.Log(
-            $"{damage.m_attacker.m_name} -> " +
-            $"{m_name} " +
-            $"{damage.m_damage} 데미지"
-        );
-
+        if (Blocking() == false)
+        {
+            m_curHp -= damage.m_damage;
+            Debug.Log(
+                $"{damage.m_attacker.m_name} -> " +
+                $"{m_name} " +
+                $"{damage.m_damage} 데미지"
+            );
+        }
         if (m_curHp <= 0)
         {
-            m_curHp = 0;
-            foreach (var buff in m_buffs)
-            {
-                buff.OnDead(damage);
-            }
+            PlayDeadAnimation();
             return;
         }
-
         foreach (var buff in m_buffs)
         {
             buff.OnDamaged(damage);
