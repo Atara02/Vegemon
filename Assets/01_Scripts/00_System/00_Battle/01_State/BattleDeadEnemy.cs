@@ -11,7 +11,7 @@ public class BattleDeadEnemy : StateBase<BattleSystem>
     }
     public override void EnterState()
     {
-        return;
+        m_sys.EnterEnemyDead();
     }
     public override void UpdateState()
     {
@@ -19,6 +19,6 @@ public class BattleDeadEnemy : StateBase<BattleSystem>
     }
     public override void ExitState()
     {
-
+        m_sys.ExitEnemyDead();
     }
 }

@@ -11,7 +11,7 @@ public class BattleDeadPlayer : StateBase<BattleSystem>
     }
     public override void EnterState()
     {
-        return;
+        m_sys.EnterPlayerDead();
     }
     public override void UpdateState()
     {

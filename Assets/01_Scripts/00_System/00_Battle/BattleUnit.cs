@@ -1,10 +1,15 @@
-﻿using System;
+﻿using DG.Tweening;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class BattleUnit : MonoBehaviour
 {
     public Animator m_anim = null;
+    public SpriteRenderer m_rend = null;
+
+    public Vector2 m_initPoint;
+    public Vector2 m_spawnPoint;
 
     public string m_name;
 
@@ -24,10 +29,54 @@ public class BattleUnit : MonoBehaviour
 
     public event Action OnUnitAttack;
     public event Action OnUnitQuitAttack;
+    public event Action OnUnitDead;
 
+    private void Awake()
+    {
+        m_initPoint = transform.position;
+        m_spawnPoint = transform.position;
+
+        Vector2 center = Camera.main.transform.position;
+        float height = Camera.main.orthographicSize * 2f;
+        float width = height * ((float)Screen.width / Screen.height);
+        int sign = m_initPoint.x <= center.x ? -1 : 1;
+        m_spawnPoint.x += sign * (width * 0.5f);
+    }
     public void Init()
     {
         m_curHp = m_maxHp;
+    }
+    
+    public void SetStatus(int hp, int atk, int def)
+    {
+        m_maxHp = hp;
+        m_attack = atk;
+        m_defense = def;
+    }
+
+    bool CanControlRend
+    {
+        get
+        {
+            if (m_rend == null)
+            {
+                m_rend = GetComponent<SpriteRenderer>();
+            }
+            return m_rend != null;
+        }
+    }
+    public void SpawnUnit(TweenCallback callback)
+    {
+        SetPosition(m_spawnPoint);
+
+        if (CanControlRend)
+        {
+            Color alpha = m_rend.color;
+            alpha.a = 1;
+            m_rend.color = alpha;
+        }
+        PlayMoveAnimation();
+        transform.DOMove(m_initPoint, 0.5f).OnComplete(callback);
     }
 
     // =========================
@@ -42,6 +91,21 @@ public class BattleUnit : MonoBehaviour
                 m_anim = GetComponent<Animator>();
             }
             return m_anim != null;
+        }
+    }
+    public void PlayIdleAnimation()
+    {
+        if (CanControlAnimtion)
+        {
+            m_anim.SetBool("Move", false);
+            m_anim.Play("idle");
+        }
+    }
+    public void PlayMoveAnimation()
+    {
+        if (CanControlAnimtion)
+        {
+            m_anim.SetBool("Move", true);
         }
     }
     public void PlayAttackAnimation()
@@ -75,6 +139,25 @@ public class BattleUnit : MonoBehaviour
     {
         OnUnitQuitAttack?.Invoke();
         OnUnitQuitAttack = null;
+    }
+    void QuitDeathEvent()
+    {
+        if (CanControlRend)
+        {
+            m_rend.DOFade(0f, 0.5f).OnComplete(() => 
+            { 
+                OnUnitDead?.Invoke(); 
+                OnUnitDead = null;
+
+                PlayIdleAnimation();
+            });
+        }
+    }
+
+
+    public void SetPosition(Vector2 position)
+    {
+        transform.position = position;
     }
 
 

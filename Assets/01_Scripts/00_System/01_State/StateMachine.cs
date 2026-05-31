@@ -10,6 +10,14 @@ public class StateMachine<T> : MonoBehaviour
     protected StateBase<T> m_current = null;
     protected Coroutine m_update = null;
 
+    protected void RestrictState()
+    {
+        if (!m_isRestric)
+        {
+            m_isRestric = true;
+
+        }
+    }
     protected IEnumerator StateUpdate()
     {
         while(!m_isRestric)
