@@ -943,6 +943,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d01f9a50e6a1354cbcedc5af9e215a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryManager
+  m_soul: 0
+  m_seed: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -33,9 +33,23 @@
     {
     }
 
+
+    public virtual void OnCritical(ref int damage)
+    {
+
+    }
+
     // =========================
     // 피격 직전
     // =========================
+    public virtual void OnDodge()    //블로킹 성공 시
+    {
+
+    }
+    public virtual void OnFailDodge(ref bool dodge)    //블로킹 실패 시
+    {
+
+    }
     public virtual void OnTakeDamage(ref int damage)
     {
     }

@@ -11,7 +11,7 @@ public class BattleHoldAction : StateBase<BattleSystem>
     }
     public override void EnterState()
     {
-        return;
+        m_sys.EnterHold();
     }
     public override void UpdateState()
     {

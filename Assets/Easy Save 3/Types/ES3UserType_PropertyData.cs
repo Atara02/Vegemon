@@ -32,7 +32,7 @@ namespace ES3Types
 					instance = (PropertyData)reader.SetPrivateField("m_soul", reader.Read<System.Int32>(), instance);
 					break;
 					case "m_seed":
-					instance = (PropertyData)reader.SetPrivateField("m_seed", reader.Read<System.Int32>(), instance);
+					instance = (PropertyData)reader.SetPrivateField("m_seed", reader.Read<System.Int32[]>(), instance);
 					break;
 					default:
 						reader.Skip();

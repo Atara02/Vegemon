@@ -5,21 +5,17 @@ using UnityEngine;
 
 public class BattleSystem : StateMachine<BattleSystem>
 {
-    public float m_height = 0f;
-    public float m_width = 0f;
-    public Vector2 m_center = Vector2.zero;
-
-    public Vector2 m_enemySpawn;
-    public Vector2 m_enemyPoint;
+    private BattleManager m_bMgr;
 
     [Header("<유닛>")]
-    public BattleUnit m_player;
-    public BattleUnit m_enemy;
+    public PlayerUnit m_player;
+    public EnemyUnit m_enemy;
 
     [Header("<공격 게이지>")]
-    public float m_maxGauge = 100f;
-    private float m_ptimer;
-    private float m_etimer;
+    public float m_maxGauge = 1f;
+    public float m_pGauge;
+    public float m_eGauge;
+    
 
     #region <상태>
     public BattleHoldAction m_hold;
@@ -29,7 +25,14 @@ public class BattleSystem : StateMachine<BattleSystem>
     public BattleDeadPlayer m_pDead;
     public BattleDeadEnemy m_eDead;
     #endregion
-    public BattleManager m_bMgr;
+
+    public event System.Action<float> OnUpdatePlayerGauge;
+    public event System.Action<float> OnUpdateEnemyGauge;
+
+    public event System.Action OnBattle;
+    public event System.Action OnPlayerDead;
+    public event System.Action OnEnemyDead;
+
     public UIAlarm m_next;
 
     private void Start()
@@ -40,19 +43,17 @@ public class BattleSystem : StateMachine<BattleSystem>
 
         m_bMgr = GetComponent<BattleManager>();
 
-        m_center = Camera.main.transform.position;
-        m_height = Camera.main.orthographicSize * 2f;
-        m_width = m_height * ((float)Screen.width / Screen.height);
-        m_enemySpawn = m_center + new Vector2((m_width * 0.5f) + 1f, 0f);
-        m_enemyPoint = m_enemy.transform.position;
+        m_player = GetComponentInChildren<PlayerUnit>();
+        m_enemy = GetComponentInChildren<EnemyUnit>();
 
+        SetVegemonStat();
         m_player.Init();
 
-        SetNextEnemyStatus();
+        SetEnemyStat();
         m_enemy.Init();
 
-        m_ptimer = 0f;
-        m_etimer = 0f;
+        m_pGauge = 0f;
+        m_eGauge = 0f;
 
         #region <상태>
         m_hold = new BattleHoldAction();
@@ -71,24 +72,44 @@ public class BattleSystem : StateMachine<BattleSystem>
         UpdateState(m_hold);
         #endregion
     }
-
-    void SetNextEnemyStatus()
+    void SetVegemonStat()
     {
-        int hp = m_bMgr.CalculateEnemyHp();
-        int atk = m_bMgr.CalculateEnemyAtk();
-        int def = m_bMgr.CalculateEnemyDef();
-        m_enemy.SetStatus(hp, atk, def);
+        //내 베지몬 정보 불러와서 세팅하기 / 지금은 임시로
+        VegemonData vegemon = VegemonDB.Instance.GetVegemonData(0);
+        int hp = vegemon.m_hp;
+        int atk = vegemon.m_atk;
+        int def = vegemon.m_def;
+        int spd = vegemon.m_spd;
+        int luk = vegemon.m_luk;
+        m_player.SetStat(hp, atk, def, spd, luk);
     }
 
+    void SetEnemyStat()
+    {
+        int hp = m_bMgr.GetEnemyHp();
+        int atk = m_bMgr.GetEnemyAtk();
+        int def = m_bMgr.GetEnemyDef();
+        int spd = m_bMgr.GetEnemySpd();
+        int luk = m_bMgr.GetEnemyLuk();
+        m_enemy.SetStat(hp, atk, def, spd, luk);
+    }
+
+    public void EnterHold()
+    {
+        OnBattle?.Invoke();
+    }
     public void ChargeGauge()
     {
-        m_ptimer += m_player.m_speed * Time.deltaTime;
-        m_etimer += m_enemy.m_speed * Time.deltaTime;
-        if (m_ptimer >= m_maxGauge)
+        m_pGauge += Mathf.Clamp01(m_player.Speed * Time.deltaTime);
+        m_eGauge += Mathf.Clamp01(m_enemy.Speed * Time.deltaTime);
+
+        OnUpdatePlayerGauge?.Invoke(m_pGauge);
+        OnUpdateEnemyGauge?.Invoke(m_eGauge);
+        if (m_pGauge >= m_maxGauge)
         {
             UpdateState(m_pAction);
         }
-        else if (m_etimer >= m_maxGauge)
+        else if (m_eGauge >= m_maxGauge)
         {
             UpdateState(m_eAction);
         }
@@ -97,7 +118,7 @@ public class BattleSystem : StateMachine<BattleSystem>
     #region <플레이어 공격>
     public void EnterPlayerSequence()
     {
-        m_ptimer = 0f;
+        m_pGauge = 0f;
         m_player.OnUnitAttack += PlayerAttack;
         m_player.OnUnitQuitAttack += CheckQuitBattle;
         m_player.PlayAttackAnimation();
@@ -111,7 +132,7 @@ public class BattleSystem : StateMachine<BattleSystem>
     #region <Enemy 공격>
     public void EnterEnemySequence()
     {
-        m_etimer = 0f;
+        m_eGauge = 0f;
         m_enemy.OnUnitAttack += EnemyAttack;
         m_enemy.OnUnitQuitAttack += CheckQuitBattle;
         m_enemy.PlayAttackAnimation();
@@ -140,24 +161,27 @@ public class BattleSystem : StateMachine<BattleSystem>
 
     public void EnterPlayerDead()
     {
-        m_ptimer = 0f;
-        m_etimer = 0f;
+        m_pGauge = 0f;
+        m_eGauge = 0f;
         m_player.OnUnitDead += GameManager.Instance.GameOver;
+
+        OnPlayerDead?.Invoke();
     }
 
     #region <Enemy 사망>
     public void EnterEnemyDead()
     {
-        m_ptimer = 0f;
-        m_etimer = 0f;
+        m_pGauge = 0f;
+        m_eGauge = 0f;
         m_bMgr.KillMob();
         m_enemy.OnUnitDead += ShowNextEnemyUI;
+
+        OnEnemyDead?.Invoke();
     }
     public void ExitEnemyDead()
     {
         //에너미 정보 갱신
         m_enemy.Init();
-        m_enemy.PlayIdleAnimation();
     }
     void ShowNextEnemyUI()
     {
@@ -168,7 +192,7 @@ public class BattleSystem : StateMachine<BattleSystem>
     }
     public void NextEnemy()
     {
-        SetNextEnemyStatus();
+        SetEnemyStat();
         m_enemy.SpawnUnit(() => UpdateState(m_hold));
     }
     #endregion
